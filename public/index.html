@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Vault - Cédula Anonymizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-900 text-slate-100">
+    <div class="max-w-2xl mx-auto p-6">
+      <div class="mb-6">
+        <h1 class="text-2xl font-semibold">Privacy Vault</h1>
+        <p class="text-slate-400">Valida y anonimiza cédulas contra tu API en <span class="font-mono">/anonymize</span>.</p>
+      </div>
+
+      <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-5 shadow-xl">
+        <form id="form" class="grid gap-4 md:grid-cols-12 items-end">
+          <div class="md:col-span-8">
+            <label for="cedula" class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Cédula</label>
+            <input id="cedula" name="cedula" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="12345678" required class="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500" />
+            <div class="text-xs text-slate-400 mt-2">Solo dígitos; longitud según política del backend.</div>
+          </div>
+          <div class="md:col-span-2 flex gap-2">
+            <button class="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold px-4 py-3" type="submit">ACK</button>
+          </div>
+          <div class="md:col-span-2 flex gap-2">
+            <button class="w-full rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-900 font-semibold px-4 py-3" type="button" id="btn-anonymize">Guardar</button>
+          </div>
+        </form>
+
+        <div class="grid md:grid-cols-2 gap-4 mt-5">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Respuesta</div>
+            <pre id="output" class="min-h-[112px] rounded-lg border border-slate-700 bg-slate-900 p-3 overflow-auto">{}</pre>
+            <div class="flex gap-2 mt-2">
+              <button id="btn-copy" class="text-xs px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">Copiar</button>
+              <span id="copy-status" class="text-xs text-slate-400"></span>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Salud del servicio</div>
+            <pre id="health" class="min-h-[112px] rounded-lg border border-slate-700 bg-slate-900 p-3 overflow-auto">(click para comprobar)</pre>
+            <button class="mt-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold px-4 py-2" id="btn-health" type="button">Check /health</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const outputEl = document.getElementById('output');
+      const cedulaEl = document.getElementById('cedula');
+      const formEl = document.getElementById('form');
+      const anonymizeBtn = document.getElementById('btn-anonymize');
+      const healthBtn = document.getElementById('btn-health');
+      const healthEl = document.getElementById('health');
+
+      async function postJson(path, body) {
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const type = res.headers.get('content-type') || '';
+        const data = type.includes('application/json') ? await res.json() : await res.text();
+        return { status: res.status, data };
+      }
+
+      function display(target, value) {
+        target.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+      }
+
+      formEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cedula = cedulaEl.value.trim();
+        if (!cedula) return;
+        try {
+          const result = await postJson('/anonymize/cedula', { cedula });
+          display(outputEl, { endpoint: '/anonymize/cedula', ...result });
+        } catch (err) {
+          display(outputEl, { error: true, message: err?.message || String(err) });
+        }
+      });
+
+      anonymizeBtn.addEventListener('click', async () => {
+        const cedula = cedulaEl.value.trim();
+        if (!cedula) return;
+        try {
+          const result = await postJson('/anonymize/cedula/anonymize', { cedula });
+          display(outputEl, { endpoint: '/anonymize/cedula/anonymize', ...result });
+        } catch (err) {
+          display(outputEl, { error: true, message: err?.message || String(err) });
+        }
+      });
+
+      healthBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/health');
+          const json = await res.json();
+          display(healthEl, json);
+        } catch (err) {
+          display(healthEl, { error: true, message: err?.message || String(err) });
+        }
+      });
+
+      document.getElementById('btn-copy').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(outputEl.textContent);
+          document.getElementById('copy-status').textContent = 'Copiado';
+          setTimeout(() => (document.getElementById('copy-status').textContent = ''), 1200);
+        } catch (_) {
+          document.getElementById('copy-status').textContent = 'No se pudo copiar';
+        }
+      });
+    </script>
+  </body>
+  </html>
+
+
