@@ -1,13 +1,17 @@
 # Privacy Vault
 
-Este proyecto es un servicio de backend y frontend diseñado para demostrar técnicas de protección de la privacidad, como la anonimización de datos y la interacción segura con modelos de lenguaje de IA.
+Este proyecto es una solución integral de backend y frontend diseñada para demostrar una arquitectura robusta de protección de la privacidad. El sistema permite la anonimización de datos sensibles (cédulas) y la interacción segura con modelos de lenguaje de IA (Google Gemini), garantizando que la información de identificación personal (PII) nunca se exponga a servicios de terceros.
 
 ## Características
 
-- **API de Anonimización**: Endpoints para validar, anonimizar (guardar) y desanonimizar (recuperar) identificadores personales (cédulas).
-- **Chat Seguro con IA**: Una interfaz de chat que filtra información de identificación personal (PII) como nombres, correos electrónicos y números de cédula antes de enviar el prompt a la API de Google Gemini. La respuesta de la IA también se desanonimiza antes de mostrarla al usuario.
-- **Interfaz Web Simple**: Un frontend básico para interactuar con todos los servicios de la API.
-- **Base de Datos Segura**: Utiliza MongoDB para almacenar la relación entre los datos originales y sus identificadores anonimizados.
+- **API de Anonimización de Cédulas**: Endpoints dedicados para validar, anonimizar (mediante tokenización) y desanonimizar identificadores personales.
+- **Chat Seguro con IA**: Una interfaz de chat que filtra dinámicamente PII (nombres, correos, teléfonos, cédulas) de los prompts del usuario antes de enviarlos a la API de Google Gemini. La respuesta de la IA se desanonimiza antes de ser presentada, manteniendo un flujo de datos seguro de extremo a extremo.
+- **Interfaz de Usuario Intuitiva**: Un único archivo `index.html` con Vanilla JavaScript que proporciona una consola interactiva para probar todas las funcionalidades de la API, incluyendo:
+    - Sección de anonimización/desanonimización de cédulas.
+    - Sección de chat seguro con la IA.
+    - Visualización de respuestas y estado del servicio.
+- **Persistencia Segura**: Utiliza MongoDB y Mongoose para almacenar de forma segura la relación entre los datos originales y sus tokens anonimizados.
+- **Monitoreo de Salud**: Incluye un endpoint `GET /health` para verificar el estado del servidor y la conexión a la base de datos en tiempo real.
 
 ## Prerrequisitos
 
@@ -40,9 +44,25 @@ Este proyecto es un servicio de backend y frontend diseñado para demostrar téc
     PORT=3001
     ```
 
+4.  **(Opcional) Configurar `package.json`:**
+    Para usar los scripts de `npm`, asegúrate de que tu `package.json` tenga una sección de `scripts` como esta:
+    ```json
+    "scripts": {
+      "start": "node server.js",
+      "dev": "nodemon server.js",
+      "test": "node cedula_test.js"
+    }
+    ```
+    Si no tienes un `package.json`, puedes crearlo con `npm init -y` y luego agregar la sección de `scripts`.
+
 ## Cómo usar la aplicación
 
 1.  **Iniciar el servidor:**
+    Usando npm (recomendado):
+    ```bash
+    npm start
+    ```
+    O directamente con Node:
     ```bash
     node server.js
     ```
@@ -53,11 +73,11 @@ Este proyecto es un servicio de backend y frontend diseñado para demostrar téc
 
 ## Scripts Útiles
 
-### Ejecutar pruebas
+### Ejecutar pruebas (`cedula_test.js`)
 
-Para verificar que los endpoints básicos funcionan correctamente, puedes ejecutar el script de prueba:
+Para verificar que los endpoints básicos de cédula funcionan correctamente:
 ```bash
-node cedula_test.js
+npm test
 ```
 
 ### Listar modelos de IA
