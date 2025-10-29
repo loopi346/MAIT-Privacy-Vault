@@ -1,28 +1,30 @@
 "use strict";
 
 /**
- * Privacy Vault - Minimal Express Server
+ * Privacy Vault - Servidor Mínimo de Express
  * ------------------------------------------------------------
  
  *
- * Purpose:
- *   - Provide a clean, well-documented starting point for a Node.js
- *     service that will host Privacy Vault APIs.
- *   - Demonstrate separation of concerns by keeping routing logic
- *     out of the main server initialization flow.
+ * Propósito:
+ *   - Proporcionar un punto de partida limpio y bien documentado para un servicio
+ *     de Node.js que alojará las APIs de Privacy Vault.
+ *   - Demostrar la separación de responsabilidades manteniendo la lógica de
+ *     enrutamiento fuera del flujo principal de inicialización del servidor.
  *
  */
 
-// 1) Module imports and app initialization --------------------
-// Express is the minimalist web framework we use to declare HTTP routes.
-// dotenv loads environment variables from a local env file into process.env.
+// 1) Importación de módulos e inicialización de la aplicación --------------------
+// Express es el framework web minimalista que usamos para declarar rutas HTTP.
+// dotenv carga las variables de entorno desde un archivo .env local en process.env.
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid'); // Usaremos UUID para anonimizar
+const { anonymizePrompt, deanonymizeResponse } = require('./services/piiAnonymizerService');
+const { getCompletion } = require('./services/geminiService');
 
-// Prefer cedula.env if present; otherwise fallback to .env
+// Prefiere cedula.env si está presente; de lo contrario, usa .env
 const cedulaEnvPath = path.join(process.cwd(), "cedula.env");
 const defaultEnvPath = path.join(process.cwd(), ".env");
 if (fs.existsSync(cedulaEnvPath)) {
@@ -31,20 +33,20 @@ if (fs.existsSync(cedulaEnvPath)) {
   require("dotenv").config({ path: defaultEnvPath });
 }
 
-// Create a single Express application instance for our service.
-// Keep this file focused on wiring, not business logic.
+// Crea una única instancia de la aplicación Express para nuestro servicio.
+// Mantén este archivo enfocado en la configuración, no en la lógica de negocio.
 const app = express();
 
-// Define the port. Prefer environment variable when available, else default.
+// Define el puerto. Prefiere la variable de entorno si está disponible, si no, usa un valor por defecto.
 // Se usa 3001 para coincidir con el archivo de test (cedula_test.js).
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-// 2) Global middleware configuration -------------------------
-// Parse incoming requests with JSON payloads so req.body is available as an object.
-// Add more global middleware here (CORS, logging, security headers) when needed.
+// 2) Configuración de middleware global -------------------------
+// Analiza las solicitudes entrantes con payloads JSON para que req.body esté disponible como objeto.
+// Agrega más middleware globales aquí (CORS, logging, cabeceras de seguridad) cuando sea necesario.
 app.use(express.json());
 
-// Serve a minimal frontend from the /public directory.
+// Sirve un frontend mínimo desde el directorio /public.
 app.use(express.static("public"));
 
 // --- Conexión a MongoDB ---
@@ -63,7 +65,7 @@ const CedulaSchema = new mongoose.Schema({
 
 const Cedula = mongoose.model('Cedula', CedulaSchema);
 
-// 3) Route definitions -------------------------------
+// 3) Definiciones de rutas -------------------------------
 // En lugar de usar routers externos, definimos las rutas directamente aquí para simplicidad.
 
 // Endpoint de salud para verificar que el servidor y la BD funcionan
@@ -116,7 +118,7 @@ app.post('/anonymize/cedula/anonymize', async (req, res) => {
       registro = new Cedula({ cedulaOriginal: cedula });
       await registro.save();
     }
-    res.status(201).json({ status: 201, data: { cedulaAnonimizada: registro.cedulaAnonimizada } });
+    res.status(201).json({ status: 201, cedulaAnonimizada: registro.cedulaAnonimizada });
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: 500, error: 'Error interno del servidor al guardar la cédula.' });
@@ -134,18 +136,53 @@ app.post('/deanonymize', async (req, res) => {
     if (!registro) {
       return res.status(404).json({ status: 404, error: 'Cédula anonimizada no encontrada.' });
     }
-    res.status(200).json({ status: 200, data: { cedulaOriginal: registro.cedulaOriginal } });
+    res.status(200).json({ status: 200, cedulaOriginal: registro.cedulaOriginal });
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: 500, error: 'Error interno del servidor al buscar la cédula.' });
   }
 });
 
-// 4) Server startup ------------------------------------------
-// Inicia el servidor HTTP.
+// --- ¡NUEVO ENDPOINT SECURE GEMINI! ---
+app.post('/secure-gemini', async (req, res) => {
+  const { prompt } = req.body;
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ status: 400, error: 'Se requiere un "prompt" de tipo texto.' });
+  }
+
+  try {
+    // 1. Anonimizar el prompt del usuario
+    const { anonymizedPrompt, deanonymizationMap } = anonymizePrompt(prompt);
+
+    // 2. Enviar el prompt anonimizado a Gemini
+    const aiResponse = await getCompletion(anonymizedPrompt);
+
+    // 3. Desanonimizar la respuesta de Gemini
+    const finalResponse = deanonymizeResponse(aiResponse, deanonymizationMap);
+
+    // 4. Enviar la respuesta final y segura al cliente
+    res.status(200).json({
+      status: 200,
+      respuestaIA: aiResponse,             // Respuesta original de la IA para depuración
+      promptAnonimizado: anonymizedPrompt, // Prompt anonimizado para depuración
+      respuestaFinal: finalResponse,       // Respuesta final para el usuario
+    });
+  } catch (error) {
+    console.error('Error en el endpoint /secure-gemini:', error);
+    // Devuelve un error más específico al cliente para facilitar el diagnóstico.
+    res.status(500).json({ 
+      status: 500, 
+      error: `Error al procesar con Gemini: ${error.message}` 
+    });
+  }
+});
+
+// 4) Inicio del servidor ------------------------------------------
+// Inicia el servidor HTTP y escucha en el puerto especificado.
 app.listen(port, () => {
   console.log(`Privacy Vault API está corriendo en http://localhost:${port}`);
 });
 
-// Export the app instance for potential future testing or integration.
+// Exporta la instancia de la aplicación para posibles pruebas o integraciones futuras.
 module.exports = app;

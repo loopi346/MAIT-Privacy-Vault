@@ -1,128 +1,76 @@
-Privacy Vault API (Node.js + Express + MongoDB)
+# Privacy Vault
 
-Minimal, well-structured API to receive and anonymize national IDs (cédulas). Clean layering: server (wiring), routes, middleware, controllers, services, models, db. MongoDB via Mongoose. Non-blocking startup: the HTTP server starts even if DB is down; DB-dependent routes return 503 until connected.
+Este proyecto es un servicio de backend y frontend diseñado para demostrar técnicas de protección de la privacidad, como la anonimización de datos y la interacción segura con modelos de lenguaje de IA.
 
-Requirements
-- Node.js 18+
-- MongoDB (local service, Docker, or Atlas)
+## Características
 
-Install
-```
-npm install
-```
+- **API de Anonimización**: Endpoints para validar, anonimizar (guardar) y desanonimizar (recuperar) identificadores personales (cédulas).
+- **Chat Seguro con IA**: Una interfaz de chat que filtra información de identificación personal (PII) como nombres, correos electrónicos y números de cédula antes de enviar el prompt a la API de Google Gemini. La respuesta de la IA también se desanonimiza antes de mostrarla al usuario.
+- **Interfaz Web Simple**: Un frontend básico para interactuar con todos los servicios de la API.
+- **Base de Datos Segura**: Utiliza MongoDB para almacenar la relación entre los datos originales y sus identificadores anonimizados.
 
-If starting from scratch:
-```
-npm init -y
-npm install express mongoose dotenv
-npm install --save-dev nodemon
-```
+## Prerrequisitos
 
-Environment variables
-Create `cedula.env` (preferred) or `.env` in project root:
-```
-MONGODB_URI=mongodb://127.0.0.1:27017/privacy_vault
-PORT=3001
-ANONYMIZE_STRATEGY=hash
-PEPPER=change-this-to-a-long-random-secret
-CEDULA_MIN=6
-CEDULA_MAX=12
-```
-- Windows PowerShell quick create:
-```
-Set-Content -Path cedula.env -Value @"
-MONGODB_URI=mongodb://127.0.0.1:27017/privacy_vault
-PORT=3001
-ANONYMIZE_STRATEGY=hash
-PEPPER=change-this-to-a-long-random-secret
-CEDULA_MIN=6
-CEDULA_MAX=12
-"@
-```
+- [Node.js](https://nodejs.org/) (versión 18.x o superior)
+- [MongoDB](https://www.mongodb.com/try/download/community)
+- Una clave de API de Google Gemini. Puedes obtener una en [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-Start MongoDB
-- Docker:
-```
-docker run -d --name mongo -p 27017:27017 -v mongo_data:/data/db mongo:7
-```
-- Local service (Windows): install MongoDB Community and ensure it is running.
-- Atlas: use a `mongodb+srv://` URI and allow your IP.
+## Instalación y Configuración
 
-Run the API
-```
-npm run start
-# or
-npm run dev
-```
-You should see: `Privacy Vault API is running on http://localhost:3001`. If DB connects later: `MongoDB connected.` If it fails, the server still runs and DB routes will return 503.
+1.  **Clonar el repositorio:**
+    ```bash
+    git clone <URL-DEL-REPOSITORIO>
+    cd <NOMBRE-DEL-DIRECTORIO>
+    ```
 
-Endpoints
-- Health
-  - GET `/health` → `{ http: "ok", db: "connected|connecting|disconnected" }`
+2.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
 
-- Cédula (acknowledge only, no DB required)
-  - POST `/anonymize/cedula`
-  - Body: `{ "cedula": "12345678" }`
-  - 200: `{ "status": "Received cédula, ready to anonymize", "cedula": "12345678" }`
+3.  **Configurar las variables de entorno:**
+    Crea un archivo llamado `cedula.env` en la raíz del proyecto. Puedes copiar el archivo de ejemplo:
+    ```bash
+    cp cedula.env.example cedula.env
+    ```
+    Luego, edita el archivo `cedula.env` y añade tus propias claves y configuraciones:
+    ```
+    GEMINI_API_KEY="TU_API_KEY_DE_GEMINI"
+    MONGODB_URI="mongodb://localhost:27017/privacy_vault"
+    PORT=3001
+    ```
 
-- Cédula (anonymize + persist, requires DB)
-  - POST `/anonymize/cedula/anonymize`
-  - Body: `{ "cedula": "12345678" }`
-  - Strategy `hash` (default): `{ "status": "Anonymized via hash", "id": "<recordId>" }`
-  - Strategy `token`: `{ "status": "Anonymized via token", "token": "<uuid>" }`
-  - If DB disconnected: `503 { "error": "Service unavailable: database not connected" }`
+## Cómo usar la aplicación
 
-- AI Guidance (Gemini)
-  - POST `/ai/gemini/guidance`
-  - Body: `{ "cedula": "12345678" }` (only masked metadata is sent to Gemini)
-  - 200: `{ guidance: string, masked: { length, last2, charset, policy } }`
+1.  **Iniciar el servidor:**
+    ```bash
+    node server.js
+    ```
+    El servidor se iniciará en `http://localhost:3001` por defecto.
 
-Quick testing (PowerShell)
-```
-# Health
-Invoke-RestMethod -Method Get -Uri http://localhost:3001/health
+2.  **Abrir la interfaz web:**
+    Abre tu navegador y ve a `http://localhost:3001`.
 
-# ACK
-Invoke-RestMethod -Method Post `
-  -Uri http://localhost:3001/anonymize/cedula `
-  -ContentType 'application/json' `
-  -Body (@{cedula='12345678'} | ConvertTo-Json)
+## Scripts Útiles
 
-# Anonymize (DB required)
-Invoke-RestMethod -Method Post `
-  -Uri http://localhost:3001/anonymize/cedula/anonymize `
-  -ContentType 'application/json' `
-  -Body (@{cedula='12345678'} | ConvertTo-Json)
+### Ejecutar pruebas
+
+Para verificar que los endpoints básicos funcionan correctamente, puedes ejecutar el script de prueba:
+```bash
+node cedula_test.js
 ```
 
-Project structure
-```
-server.js
-routes/
-  anonymize.js
-  health.js
-  ai.js
-middleware/
-  validateCedula.js
-  requireDb.js
-controllers/
-  anonymizeController.js
-services/
-  hashService.js
-  tokenService.js
-  geminiService.js
-db/
-  mongo.js
-models/
-  CedulaRecord.js
-cedula_test.js
+### Listar modelos de IA
+
+Para ver qué modelos de Gemini están disponibles con tu clave de API, ejecuta:
+```bash
+node list_models.js
 ```
 
-Notes and security
-- Never store plaintext cédulas. Hash strategy uses SHA-256 with per-record salt + application PEPPER.
-- Avoid logging sensitive data.
-- Consider adding `helmet`, `cors` with allowlist, `express-rate-limit`, and structured logging (`pino-http`).
+## Endpoints de la API
 
-License
-MIT
-
+- `GET /health`: Verifica el estado del servidor y la conexión a la base de datos.
+- `POST /anonymize/cedula`: Valida el formato de una cédula.
+- `POST /anonymize/cedula/anonymize`: Guarda una cédula y devuelve un identificador anonimizado.
+- `POST /deanonymize`: Recupera la cédula original a partir de un identificador anonimizado.
+- `POST /secure-gemini`: Envía un prompt a la IA de forma segura, anonimizando y desanonimizando la información sensible.
