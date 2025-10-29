@@ -1,59 +1,116 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Privacy Vault - Cédula Anonymizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Simple transition for a smoother UI */
+      button, input {
+        transition: all 0.15s ease-in-out;
+      }
+    </style>
   </head>
-  <body class="bg-slate-900 text-slate-100">
-    <div class="max-w-2xl mx-auto p-6">
-      <div class="mb-6">
-        <h1 class="text-2xl font-semibold">Privacy Vault</h1>
-        <p class="text-slate-400">Valida y anonimiza cédulas contra tu API en <span class="font-mono">/anonymize</span>.</p>
-      </div>
+  <body class="bg-gray-900 text-gray-300 font-sans antialiased">
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
 
-      <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-5 shadow-xl">
-        <form id="form" class="grid gap-4 md:grid-cols-12 items-end">
-          <div class="md:col-span-8">
-            <label for="cedula" class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Cédula</label>
-            <input id="cedula" name="cedula" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="12345678" required class="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500" />
-            <div class="text-xs text-slate-400 mt-2">Solo dígitos; longitud según política del backend.</div>
-          </div>
-          <div class="md:col-span-2 flex gap-2">
-            <button class="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold px-4 py-3" type="submit">ACK</button>
-          </div>
-          <div class="md:col-span-2 flex gap-2">
-            <button class="w-full rounded-lg bg-sky-400 hover:bg-sky-300 text-slate-900 font-semibold px-4 py-3" type="button" id="btn-anonymize">Guardar</button>
-          </div>
-        </form>
+      <!-- Header -->
+      <header class="text-center mb-10">
+        <h1 class="text-4xl font-bold text-white tracking-tight">Privacy Vault</h1>
+        <p class="mt-2 text-lg text-gray-400">Servicio para anonimizar y desanonimizar cédulas de forma segura.</p>
+      </header>
 
-        <div class="grid md:grid-cols-2 gap-4 mt-5">
-          <div>
-            <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Respuesta</div>
-            <pre id="output" class="min-h-[112px] rounded-lg border border-slate-700 bg-slate-900 p-3 overflow-auto">{}</pre>
-            <div class="flex gap-2 mt-2">
-              <button id="btn-copy" class="text-xs px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">Copiar</button>
-              <span id="copy-status" class="text-xs text-slate-400"></span>
-            </div>
-          </div>
-          <div>
-            <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Salud del servicio</div>
-            <pre id="health" class="min-h-[112px] rounded-lg border border-slate-700 bg-slate-900 p-3 overflow-auto">(click para comprobar)</pre>
-            <button class="mt-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold px-4 py-2" id="btn-health" type="button">Check /health</button>
-          </div>
+      <!-- Main Content -->
+      <main class="bg-gray-800/50 border border-gray-700 rounded-2xl shadow-2xl p-6 md:p-8">
+        
+        <!-- Input Section -->
+        <div class="mb-8">
+          <label for="cedula" class="block text-sm font-medium text-gray-400 mb-2">Cédula o Identificador Anonimizado</label>
+          <input 
+            id="cedula" 
+            name="cedula" 
+            type="text" 
+            placeholder="Introduzca el valor aquí..." 
+            required 
+            class="w-full rounded-lg border-2 border-gray-600 bg-gray-900 px-4 py-3 text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" 
+          />
         </div>
-      </div>
+
+        <!-- Actions: Anonymize and Deanonymize -->
+        <div class="grid md:grid-cols-2 gap-8">
+
+          <!-- Anonymize Section -->
+          <div class="flex flex-col gap-4">
+            <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2">1. Anonimizar</h2>
+            <p class="text-sm text-gray-400">Valide el formato de una cédula y luego guárdela para obtener un identificador anonimizado.</p>
+            <form id="form" class="flex flex-col sm:flex-row gap-3">
+              <button class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-3 shadow-md" type="submit">Validar Cédula</button>
+              <button class="w-full rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-3 shadow-md" type="button" id="btn-anonymize">Guardar</button>
+            </form>
+          </div>
+
+          <!-- Deanonymize Section -->
+          <div class="flex flex-col gap-4">
+            <h2 class="text-xl font-semibold text-white border-b border-gray-700 pb-2">2. Desanonimizar</h2>
+            <p class="text-sm text-gray-400">Use un identificador anonimizado para recuperar la cédula original.</p>
+            <button class="w-full rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-3 shadow-md" type="button" id="btn-deanonymize">
+              Leer Identificador
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Output Section -->
+        <div class="grid md:grid-cols-2 gap-8 mt-10">
+          
+          <!-- API Response -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Respuesta de la API</label>
+            <div class="relative">
+              <pre id="output" class="min-h-[160px] text-sm rounded-lg border border-gray-700 bg-gray-900 p-4 overflow-auto font-mono text-cyan-300">{}</pre>
+              <button id="btn-copy" class="absolute top-2 right-2 text-xs px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300">Copiar</button>
+            </div>
+            <span id="copy-status" class="inline-block mt-2 text-xs text-emerald-400"></span>
+          </div>
+
+          <!-- Service Health -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">Salud del Servicio</label>
+            <pre id="health" class="min-h-[160px] text-sm rounded-lg border border-gray-700 bg-gray-900 p-4 overflow-auto font-mono text-gray-400">(Haga clic en el botón para comprobar)</pre>
+            <button class="mt-3 w-full sm:w-auto rounded-lg bg-gray-600 hover:bg-gray-500 text-white font-semibold px-4 py-2" id="btn-health" type="button">Check /health</button>
+          </div>
+
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="text-center mt-8">
+        <p class="text-sm text-gray-500">&copy; 2024 Privacy Vault. Todos los derechos reservados.</p>
+      </footer>
+
     </div>
 
     <script>
+      // --- Element References ---
       const outputEl = document.getElementById('output');
       const cedulaEl = document.getElementById('cedula');
       const formEl = document.getElementById('form');
       const anonymizeBtn = document.getElementById('btn-anonymize');
+      const deanonymizeBtn = document.getElementById('btn-deanonymize');
       const healthBtn = document.getElementById('btn-health');
       const healthEl = document.getElementById('health');
+      const copyBtn = document.getElementById('btn-copy');
+      const copyStatusEl = document.getElementById('copy-status');
 
+      // --- Helper Functions ---
+
+      /**
+       * Performs a POST request with a JSON body.
+       * @param {string} path - The API endpoint path.
+       * @param {object} body - The JSON body to send.
+       * @returns {Promise<{status: number, data: object|string}>}
+       */
       async function postJson(path, body) {
         const res = await fetch(path, {
           method: 'POST',
@@ -65,33 +122,63 @@
         return { status: res.status, data };
       }
 
+      /**
+       * Displays a value in a target preformatted element.
+       * @param {HTMLElement} target - The <pre> element to display in.
+       * @param {any} value - The value to display.
+       */
       function display(target, value) {
         target.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
       }
 
+      // --- Event Listeners ---
+
+      // Validate (ACK)
       formEl.addEventListener('submit', async (e) => {
         e.preventDefault();
         const cedula = cedulaEl.value.trim();
         if (!cedula) return;
         try {
           const result = await postJson('/anonymize/cedula', { cedula });
-          display(outputEl, { endpoint: '/anonymize/cedula', ...result });
+          display(outputEl, result);
         } catch (err) {
           display(outputEl, { error: true, message: err?.message || String(err) });
         }
       });
 
+      // Anonymize (Guardar)
       anonymizeBtn.addEventListener('click', async () => {
+        console.log('Evento click en "Guardar" iniciado.'); // 1. Mensaje para saber que entramos aquí
+        debugger; // 2. El código se pausará aquí si las herramientas de desarrollador están abiertas
+
         const cedula = cedulaEl.value.trim();
+        console.log('Valor a anonimizar:', cedula); // 3. Imprimimos el valor que vamos a enviar
+
         if (!cedula) return;
         try {
+          console.log('Enviando petición a /anonymize/cedula/anonymize...');
           const result = await postJson('/anonymize/cedula/anonymize', { cedula });
-          display(outputEl, { endpoint: '/anonymize/cedula/anonymize', ...result });
+          console.log('Respuesta del servidor:', result); // 4. Vemos qué respondió el servidor
+          display(outputEl, result);
+        } catch (err) {
+          console.error('¡Ocurrió un error en la petición!', err); // 5. Si algo falla, se imprimirá el error en rojo
+          display(outputEl, { error: true, message: err?.message || String(err), stack: err.stack });
+        }
+      });
+
+      // Deanonymize (Leer)
+      deanonymizeBtn.addEventListener('click', async () => {
+        const cedulaAnonimizada = cedulaEl.value.trim();
+        if (!cedulaAnonimizada) return;
+        try {
+          const result = await postJson('/deanonymize', { cedulaAnonimizada });
+          display(outputEl, result);
         } catch (err) {
           display(outputEl, { error: true, message: err?.message || String(err) });
         }
       });
 
+      // Health Check
       healthBtn.addEventListener('click', async () => {
         try {
           const res = await fetch('/health');
@@ -102,17 +189,16 @@
         }
       });
 
-      document.getElementById('btn-copy').addEventListener('click', async () => {
+      // Copy to Clipboard
+      copyBtn.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(outputEl.textContent);
-          document.getElementById('copy-status').textContent = 'Copiado';
-          setTimeout(() => (document.getElementById('copy-status').textContent = ''), 1200);
+          copyStatusEl.textContent = '¡Copiado!';
+          setTimeout(() => (copyStatusEl.textContent = ''), 2000);
         } catch (_) {
-          document.getElementById('copy-status').textContent = 'No se pudo copiar';
+          copyStatusEl.textContent = 'Error al copiar';
         }
       });
     </script>
   </body>
   </html>
-
-
