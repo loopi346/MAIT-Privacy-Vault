@@ -157,7 +157,7 @@
         if (!cedula) return;
         try {
           const result = await postJson('/anonymize/cedula', { cedula });
-          display(outputEl, result);
+          display(outputEl, result.data);
         } catch (err) {
           display(outputEl, { error: true, message: err?.message || String(err) });
         }
@@ -176,7 +176,7 @@
           console.log('Enviando petición a /anonymize/cedula/anonymize...');
           const result = await postJson('/anonymize/cedula/anonymize', { cedula });
           console.log('Respuesta del servidor:', result); // 4. Vemos qué respondió el servidor
-          display(outputEl, result);
+          display(outputEl, result.data);
         } catch (err) {
           console.error('¡Ocurrió un error en la petición!', err); // 5. Si algo falla, se imprimirá el error en rojo
           display(outputEl, { error: true, message: err?.message || String(err), stack: err.stack });
@@ -189,7 +189,7 @@
         if (!cedulaAnonimizada) return;
         try {
           const result = await postJson('/deanonymize', { cedulaAnonimizada });
-          display(outputEl, result);
+          display(outputEl, result.data);
         } catch (err) {
           display(outputEl, { error: true, message: err?.message || String(err) });
         }
@@ -225,7 +225,7 @@
           // Muestra un estado de "cargando"
           display(outputEl, { status: 'Procesando con la IA...' });
           const result = await postJson('/secure-gemini', { prompt });
-          display(outputEl, result);
+          display(outputEl, result.data);
         } catch (err) {
           display(outputEl, { error: true, message: err?.message || String(err) });
         }

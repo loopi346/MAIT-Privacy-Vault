@@ -7,15 +7,40 @@
  * from a given text prompt.
  */
 
+// const { v4: uuidv4 } = require('uuid'); // Ya no se necesita para los tokens
+
 // Regex to find common PII patterns
 const piiPatterns = {
   email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
   phone: /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
   // Name detection is complex and prone to errors. This is a simple example.
-  // It looks for two capitalized words together.
-  name: /\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)+\b/gi, // Se agrega flag 'i' para case-insensitive
-  cedula: /\b\d{7,9}\b/g, // Se agrega regex para detectar cédulas
+  // Detecta una o dos palabras que podrían ser un nombre, sensible a mayúsculas/minúsculas.
+  name: /\b[a-z]{4,}(?:\s[a-z]+)?\b/gi,
+  cedula: /\b\d{7,9}\b/g,
 };
+
+// Palabras comunes para evitar que se anonimicen como nombres.
+const stopWords = new Set(['hola', 'mi', 'nombre', 'es', 'vivo', 'en', 'necesito', 'ayuda', 'con', 'factura', 'cuenta', 'para', 'como', 'estas']);
+
+/**
+ * Genera un sufijo aleatorio de 3 caracteres (letras o números).
+ * @returns {string}
+ */
+function generateRandomSuffix() {
+  let suffix = '';
+  if (Math.random() > 0.5) { // Generar letras
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    for (let i = 0; i < 3; i++) {
+      suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+  } else { // Generar números
+    const digits = '0123456789';
+    for (let i = 0; i < 3; i++) {
+      suffix += digits.charAt(Math.floor(Math.random() * digits.length));
+    }
+  }
+  return suffix;
+}
 
 /**
  * Anonymizes a prompt by replacing PII with tokens.
@@ -28,20 +53,20 @@ function anonymizePrompt(prompt) {
   let piiCounter = 0;
 
   for (const [type, regex] of Object.entries(piiPatterns)) {
-    const matches = anonymizedPrompt.match(regex) || [];
-    for (const match of matches) {
-      // Avoid re-anonymizing something that's already a token
-      if (match.startsWith(`[${type.toUpperCase()}_`)) continue;
+    // Usamos una función de reemplazo para tener más control
+    anonymizedPrompt = anonymizedPrompt.replaceAll(regex, (match) => {
+      // Si es un nombre, verifica que no sea una palabra común.
+      if (type === 'name' && stopWords.has(match.toLowerCase())) {
+        return match; // No lo anonimices.
+      }
 
+      // Evita re-anonimizar un token que ya existe
+      if (deanonymizationMap.has(match)) return match;
       piiCounter++;
-      const token = `[${type.toUpperCase()}_${piiCounter}]`;
-      
-      // Usa replaceAll para un reemplazo más robusto y explícito.
-      anonymizedPrompt = anonymizedPrompt.replaceAll(match, token);
-      
-      // Store the original value for the token
+      const token = `[${type.substring(0, 3).toUpperCase()}${piiCounter}-${generateRandomSuffix()}]`;
       deanonymizationMap.set(token, match);
-    }
+      return token;
+    });
   }
 
   return { anonymizedPrompt, deanonymizationMap };
