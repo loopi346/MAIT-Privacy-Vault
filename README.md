@@ -15,7 +15,7 @@ Este proyecto es una solución integral de backend y frontend diseñada para dem
 ## Prerrequisitos
 
 - [Node.js](https://nodejs.org/) (versión 18.x o superior)
-- [MongoDB](https://www.mongodb.com/try/download/community)
+- Una cuenta de [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) (el plan gratuito es suficiente).
 - Una clave de API de Google Gemini. Puedes obtener una en [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ## Instalación y Configuración
@@ -36,10 +36,18 @@ Este proyecto es una solución integral de backend y frontend diseñada para dem
     ```bash
     cp cedula.env.example cedula.env
     ```
-    Luego, edita el archivo `cedula.env` y añade tus propias claves y configuraciones:
+    Luego, edita el archivo `cedula.env` y añade tus propias claves. Para la base de datos, sigue estos pasos:
+    
+    a. **Crea un cluster gratuito en MongoDB Atlas.**
+    b. En la sección "Database Access", **crea un usuario y contraseña** para la base de datos.
+    c. En la sección "Network Access", **permite el acceso desde cualquier lugar** (IP `0.0.0.0/0`).
+    d. En la vista principal del cluster, haz clic en "Connect" -> "Drivers" y **copia la URL de conexión**.
+    
+    Finalmente, edita tu archivo `cedula.env` con tus claves:
     ```
     GEMINI_API_KEY="TU_API_KEY_DE_GEMINI"
-    MONGODB_URI="mongodb://localhost:27017/privacy_vault"
+    # Reemplaza <username>, <password> y la URL de tu cluster.
+    MONGODB_URI="mongodb+srv://<username>:<password>@<tu-cluster-url>/privacy_vault?retryWrites=true&w=majority"
     PORT=3001
     ```
 

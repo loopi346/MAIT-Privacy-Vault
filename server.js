@@ -50,8 +50,11 @@ app.use(express.static("public"));
 
 // --- Conexión a MongoDB ---
 // Usa MONGODB_URI de tu archivo cedula.env
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Conectado a MongoDB'))
+mongoose.connect(process.env.MONGODB_URI, { dbName: 'privacy_vault' })
+  .then(() => {
+    const conn = mongoose.connection;
+    console.log(`Conectado a MongoDB en: ${conn.host}:${conn.port}`);
+  })
   .catch(err => console.error('No se pudo conectar a MongoDB:', err));
 
 // --- Modelo de Mongoose ---
