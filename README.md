@@ -1,16 +1,15 @@
 # Privacy Vault
 
-Este proyecto es una solución integral de backend y frontend diseñada para demostrar una arquitectura robusta de protección de la privacidad. El sistema permite la anonimización de datos sensibles (cédulas) y la interacción segura con modelos de lenguaje de IA (Google Gemini), garantizando que la información de identificación personal (PII) nunca se exponga a servicios de terceros.
+Este proyecto es una solución integral de backend y frontend diseñada para demostrar una arquitectura robusta de protección de la privacidad. El sistema anonimiza de forma persistente cualquier tipo de Información de Identificación Personal (PII) detectada, como cédulas, nombres o correos electrónicos, antes de procesarla o enviarla a servicios de terceros como la API de Google Gemini.
 
 ## Características
 
-- **API de Anonimización de Cédulas**: Endpoints dedicados para validar, anonimizar (mediante tokenización) y desanonimizar identificadores personales.
-- **Chat Seguro con IA**: Una interfaz de chat que filtra dinámicamente PII (nombres, correos, teléfonos, cédulas) de los prompts del usuario antes de enviarlos a la API de Google Gemini. La respuesta de la IA se desanonimiza antes de ser presentada, manteniendo un flujo de datos seguro de extremo a extremo.
+- **Sistema de Anonimización Unificado**: Toda la PII detectada (cédulas, nombres, emails, etc.) se guarda en una única colección de MongoDB. A cada dato sensible se le asigna un token único y persistente (UUID).
+- **Chat Seguro con IA Persistente**: El chat con la IA utiliza el mismo sistema de persistencia. Cualquier dato sensible en la conversación se guarda en la base de datos y se reemplaza por su token correspondiente antes de interactuar con la API de Gemini.
 - **Interfaz de Usuario Intuitiva**: Un único archivo `index.html` con Vanilla JavaScript que proporciona una consola interactiva para probar todas las funcionalidades de la API, incluyendo:
     - Sección de anonimización/desanonimización de cédulas.
     - Sección de chat seguro con la IA.
     - Visualización de respuestas y estado del servicio.
-- **Persistencia Segura**: Utiliza MongoDB y Mongoose para almacenar de forma segura la relación entre los datos originales y sus tokens anonimizados.
 - **Monitoreo de Salud**: Incluye un endpoint `GET /health` para verificar el estado del servidor y la conexión a la base de datos en tiempo real.
 
 ## Prerrequisitos
@@ -92,5 +91,5 @@ node list_models.js
 - `GET /health`: Verifica el estado del servidor y la conexión a la base de datos.
 - `POST /anonymize/cedula`: Valida el formato de una cédula.
 - `POST /anonymize/cedula/anonymize`: Guarda una cédula y devuelve un identificador anonimizado.
-- `POST /deanonymize`: Recupera la cédula original a partir de un identificador anonimizado.
+- `POST /deanonymize`: Recupera la cédula original a partir de su identificador anonimizado.
 - `POST /secure-gemini`: Envía un prompt a la IA de forma segura, anonimizando y desanonimizando la información sensible.

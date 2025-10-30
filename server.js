@@ -20,7 +20,6 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid'); // Usaremos UUID para anonimizar
 const { anonymizePrompt, deanonymizeResponse } = require('./services/piiAnonymizerService');
 const { getCompletion } = require('./services/geminiService');
 
@@ -56,14 +55,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('No se pudo conectar a MongoDB:', err));
 
 // --- Modelo de Mongoose ---
-// Guardaremos la cédula original y su versión anonimizada
-const CedulaSchema = new mongoose.Schema({
-  cedulaOriginal: { type: String, required: true, unique: true },
-  cedulaAnonimizada: { type: String, required: true, unique: true, default: () => uuidv4() },
-  createdAt: { type: Date, default: Date.now },
-});
-
-const Cedula = mongoose.model('Cedula', CedulaSchema);
+const PiiRecord = require('./models/PiiRecord');
 
 // 3) Definiciones de rutas -------------------------------
 // En lugar de usar routers externos, definimos las rutas directamente aquí para simplicidad.
@@ -86,8 +78,8 @@ function validateCedula(cedula) {
   if (!/^\d+$/.test(cedula)) {
     return { isValid: false, error: 'La cédula solo debe contener dígitos.' };
   }
-  if (cedula.length < 7 || cedula.length > 9) {
-    return { isValid: false, error: `La cédula debe tener entre 7 y 9 dígitos (actualmente tiene ${cedula.length}).` };
+  if (cedula.length < 7 || cedula.length > 10) {
+    return { isValid: false, error: `La cédula debe tener entre 7 y 10 dígitos (actualmente tiene ${cedula.length}).` };
   }
   return { isValid: true, error: null };
 }
@@ -112,13 +104,13 @@ app.post('/anonymize/cedula/anonymize', async (req, res) => {
   }
   try {
     // Busca si la cédula ya existe para no duplicarla
-    let registro = await Cedula.findOne({ cedulaOriginal: cedula });
+    let registro = await PiiRecord.findOne({ originalValue: cedula, piiType: 'cedula' });
     if (!registro) {
       // Si no existe, crea un nuevo registro
-      registro = new Cedula({ cedulaOriginal: cedula });
+      registro = new PiiRecord({ originalValue: cedula, piiType: 'cedula' });
       await registro.save();
     }
-    res.status(201).json({ status: 201, cedulaAnonimizada: registro.cedulaAnonimizada });
+    res.status(201).json({ status: 201, cedulaAnonimizada: registro.token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: 500, error: 'Error interno del servidor al guardar la cédula.' });
@@ -132,11 +124,11 @@ app.post('/deanonymize', async (req, res) => {
     return res.status(400).json({ status: 400, error: 'Se requiere la cédula anonimizada.' });
   }
   try {
-    const registro = await Cedula.findOne({ cedulaAnonimizada: cedulaAnonimizada });
+    const registro = await PiiRecord.findOne({ token: cedulaAnonimizada, piiType: 'cedula' });
     if (!registro) {
       return res.status(404).json({ status: 404, error: 'Cédula anonimizada no encontrada.' });
     }
-    res.status(200).json({ status: 200, cedulaOriginal: registro.cedulaOriginal });
+    res.status(200).json({ status: 200, cedulaOriginal: registro.originalValue });
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: 500, error: 'Error interno del servidor al buscar la cédula.' });
@@ -153,13 +145,13 @@ app.post('/secure-gemini', async (req, res) => {
 
   try {
     // 1. Anonimizar el prompt del usuario
-    const { anonymizedPrompt, deanonymizationMap } = anonymizePrompt(prompt);
+    const anonymizedPrompt = await anonymizePrompt(prompt);
 
     // 2. Enviar el prompt anonimizado a Gemini
     const aiResponse = await getCompletion(anonymizedPrompt);
 
-    // 3. Desanonimizar la respuesta de Gemini
-    const finalResponse = deanonymizeResponse(aiResponse, deanonymizationMap);
+    // 3. Desanonimizar la respuesta de Gemini (ahora es una operación asíncrona)
+    const finalResponse = await deanonymizeResponse(aiResponse);
 
     // 4. Enviar la respuesta final y segura al cliente
     res.status(200).json({
