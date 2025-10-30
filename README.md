@@ -1,16 +1,16 @@
 # Privacy Vault
 
-Este proyecto es una solución integral de backend y frontend diseñada para demostrar una arquitectura robusta de protección de la privacidad. El sistema anonimiza de forma persistente cualquier tipo de Información de Identificación Personal (PII) detectada, como cédulas, nombres o correos electrónicos, antes de procesarla o enviarla a servicios de terceros como la API de Google Gemini.
+Este proyecto es una solución integral de backend y frontend diseñada para demostrar una arquitectura robusta de protección de la privacidad. El sistema anonimiza de forma persistente cualquier tipo de Información de Identificación Personal (PII) detectada (como cédulas, nombres, correos electrónicos, etc.) antes de procesarla o enviarla a servicios de terceros como la API de Google Gemini.
 
 ## Características
 
-- **Sistema de Anonimización Unificado**: Toda la PII detectada (cédulas, nombres, emails, etc.) se guarda en una única colección de MongoDB. A cada dato sensible se le asigna un token único y persistente (UUID).
-- **Chat Seguro con IA Persistente**: El chat con la IA utiliza el mismo sistema de persistencia. Cualquier dato sensible en la conversación se guarda en la base de datos y se reemplaza por su token correspondiente antes de interactuar con la API de Gemini.
+- **Sistema de Anonimización y Persistencia Unificado**: Toda la PII detectada (cédulas, nombres, emails, teléfonos) se gestiona a través de un único sistema. Cada dato sensible se guarda en una colección `PiiRecord` de MongoDB y se le asigna un token UUID único y persistente. Este token se utiliza para anonimizar el dato en el texto.
+- **Chat Seguro con IA**: El chat con la IA utiliza este sistema de anonimización persistente. Cualquier PII en el prompt del usuario se anonimiza (guardando o recuperando el token de la BD) antes de enviarse a Gemini. La respuesta de la IA se desanonimiza utilizando los mismos tokens persistentes antes de ser mostrada al usuario.
 - **Interfaz de Usuario Intuitiva**: Un único archivo `index.html` con Vanilla JavaScript que proporciona una consola interactiva para probar todas las funcionalidades de la API, incluyendo:
     - Sección de anonimización/desanonimización de cédulas.
     - Sección de chat seguro con la IA.
     - Visualización de respuestas y estado del servicio.
-- **Monitoreo de Salud**: Incluye un endpoint `GET /health` para verificar el estado del servidor y la conexión a la base de datos en tiempo real.
+- **Monitoreo de Salud**: Incluye un endpoint `GET /health` para verificar el estado del servidor y la conexión a la base de datos en tiempo real, mostrando el estado de Mongoose.
 
 ## Prerrequisitos
 
@@ -36,14 +36,14 @@ Este proyecto es una solución integral de backend y frontend diseñada para dem
     ```bash
     cp cedula.env.example cedula.env
     ```
-    Luego, edita el archivo `cedula.env` y añade tus propias claves. Para la base de datos, sigue estos pasos:
+    Luego, edita el archivo `cedula.env` y añade tus propias claves. Para la base de datos, sigue estos pasos (o usa tu propia URL de conexión si ya la tienes):
     
     a. **Crea un cluster gratuito en MongoDB Atlas.**
     b. En la sección "Database Access", **crea un usuario y contraseña** para la base de datos.
     c. En la sección "Network Access", **permite el acceso desde cualquier lugar** (IP `0.0.0.0/0`).
     d. En la vista principal del cluster, haz clic en "Connect" -> "Drivers" y **copia la URL de conexión**.
     
-    Finalmente, edita tu archivo `cedula.env` con tus claves:
+    Finalmente, edita tu archivo `cedula.env` con tus claves y la URL de tu base de datos:
     ```
     GEMINI_API_KEY="TU_API_KEY_DE_GEMINI"
     # Reemplaza <username>, <password> y la URL de tu cluster.
@@ -99,5 +99,39 @@ node list_models.js
 - `GET /health`: Verifica el estado del servidor y la conexión a la base de datos.
 - `POST /anonymize/cedula`: Valida el formato de una cédula.
 - `POST /anonymize/cedula/anonymize`: Guarda una cédula y devuelve un identificador anonimizado.
-- `POST /deanonymize`: Recupera la cédula original a partir de su identificador anonimizado.
+- `POST /deanonymize`: Recupera la cédula original a partir de su identificador anonimizado (token UUID).
 - `POST /secure-gemini`: Envía un prompt a la IA de forma segura, anonimizando y desanonimizando la información sensible.
+
+### `GET /health`
+- **Descripción**: Verifica el estado del servidor y la conexión a la base de datos.
+- **Respuesta Exitosa (200)**: `{"status":"ok","uptime":123.45,"dbState":"connected"}`
+
+### `POST /anonymize/cedula`
+- **Descripción**: Valida si el formato de una cédula es correcto (7 a 10 dígitos numéricos). No guarda nada.
+- **Body**: `{"cedula": "12345678"}`
+- **Respuesta Exitosa (200)**: `{"status":200,"message":"Cédula con formato válido.","cedula":"12345678"}`
+- **Respuesta de Error (400)**: `{"status":400,"error":"La cédula debe tener entre 7 y 10 dígitos..."}`
+
+### `POST /anonymize/cedula/anonymize`
+- **Descripción**: Valida una cédula, la guarda en la base de datos (`PiiRecord`) si no existe, y devuelve su token UUID persistente.
+- **Body**: `{"cedula": "12345678"}`
+- **Respuesta Exitosa (201)**: `{"status":201,"cedulaAnonimizada":"a1b2c3d4-..."}`
+
+### `POST /deanonymize`
+- **Descripción**: Recibe un token UUID y devuelve la cédula original asociada si se encuentra en la base de datos (`PiiRecord`).
+- **Body**: `{"cedulaAnonimizada": "a1b2c3d4-..."}`
+- **Respuesta Exitosa (200)**: `{"status":200,"cedulaOriginal":"12345678"}`
+- **Respuesta de Error (404)**: `{"status":404,"error":"Cédula anonimizada no encontrada."}`
+
+### `POST /secure-gemini`
+- **Descripción**: Orquesta el flujo de chat seguro. Recibe un prompt, anonimiza la PII (nombres, emails, teléfonos, cédulas) usando el sistema de persistencia (`PiiRecord`), lo envía a Gemini, recibe la respuesta, la desanonimiza y la devuelve al cliente.
+- **Body**: `{"prompt": "Hola, mi nombre es Juan Pérez y mi cédula es 12345678"}`
+- **Respuesta Exitosa (200)**:
+  ```json
+  {
+    "status": 200,
+    "respuestaIA": "Hola [UUID_TOKEN_DE_JUAN], ¿en qué puedo ayudarte con tu cédula [UUID_TOKEN_DE_CEDULA]?",
+    "promptAnonimizado": "Hola, mi nombre es [UUID_TOKEN_DE_JUAN] y mi cédula es [UUID_TOKEN_DE_CEDULA]",
+    "respuestaFinal": "Hola Juan Pérez, ¿en qué puedo ayudarte con tu cédula 12345678?"
+  }
+  ```
