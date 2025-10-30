@@ -72,21 +72,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// --- Función de Validación ---
-// Centralizamos la lógica de validación para reutilizarla y dar errores más claros.
-function validateCedula(cedula) {
-  if (!cedula) {
-    return { isValid: false, error: 'La cédula no puede estar vacía.' };
-  }
-  if (!/^\d+$/.test(cedula)) {
-    return { isValid: false, error: 'La cédula solo debe contener dígitos.' };
-  }
-  if (cedula.length < 7 || cedula.length > 10) {
-    return { isValid: false, error: `La cédula debe tener entre 7 y 10 dígitos (actualmente tiene ${cedula.length}).` };
-  }
-  return { isValid: true, error: null };
-}
-
 // Endpoint para validar el formato de una cédula
 app.post('/anonymize/cedula', (req, res) => {
   const { cedula } = req.body;

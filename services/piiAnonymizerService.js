@@ -23,6 +23,24 @@ const piiPatterns = {
 const stopWords = new Set(['hola', 'mi', 'nombre', 'es', 'vivo', 'en', 'necesito', 'ayuda', 'con', 'factura', 'cuenta', 'para', 'como', 'estas']);
 
 /**
+ * Valida el formato de una cédula.
+ * @param {string} cedula - El número de cédula a validar.
+ * @returns {{isValid: boolean, error: string|null}}
+ */
+function validateCedula(cedula) {
+  if (!cedula) {
+    return { isValid: false, error: 'La cédula no puede estar vacía.' };
+  }
+  if (!/^\d+$/.test(cedula)) {
+    return { isValid: false, error: 'La cédula solo debe contener dígitos.' };
+  }
+  if (cedula.length < 7 || cedula.length > 10) {
+    return { isValid: false, error: `La cédula debe tener entre 7 y 10 dígitos (actualmente tiene ${cedula.length}).` };
+  }
+  return { isValid: true, error: null };
+}
+
+/**
  * Anonymizes a prompt by replacing PII with tokens.
  * @param {string} prompt - The original text.
  * @returns {Promise<string>} The anonymized prompt.
@@ -37,6 +55,11 @@ async function anonymizePrompt(prompt) {
     for (const match of uniqueMatches) {
       if (type === 'name' && stopWords.has(match.toLowerCase())) {
         continue; // No lo anonimices.
+      }
+
+      // Si es una cédula, aplica la validación estricta antes de guardarla.
+      if (type === 'cedula' && !validateCedula(match).isValid) {
+        continue; // No es una cédula válida, no la anonimices.
       }
 
       let record = await PiiRecord.findOne({ originalValue: match, piiType: type });
